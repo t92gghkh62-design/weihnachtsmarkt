@@ -1,0 +1,10 @@
+{
+  "name": "altstadt-weihnachtsmarkt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Team-Dashboard: Jeder Termin baut den 3D-Weihnachtsmarkt weiter auf",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "pg": "^8.11.3" }
+}
