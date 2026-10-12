@@ -182,7 +182,7 @@ input[type=range]{flex:1 1 220px;accent-color:var(--gold)}
         <button class="iconbtn" id="zoomIn" aria-label="Näher heran">+</button>
         <button class="iconbtn" id="zoomOut" aria-label="Weiter weg">−</button>
         <button class="iconbtn" id="homeBtn" aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen">⌂</button>
-        <button class="finalbtn" id="finalBtn" aria-pressed="false">Endbild ansehen</button>
+        <button class="finalbtn" id="finalBtn" aria-pressed="true" hidden>Vorschau beenden</button>
       </div>
       <div class="toast" id="toast" hidden><div class="t" id="toastText"></div><button class="small" id="undo" hidden>Rückgängig</button></div>
     </section>
@@ -862,11 +862,12 @@ function renderHud(){
   const n=preview!==null?preview:realCount;
   $("total").textContent=n;$("barfill").style.width=Math.min(100,n/GOAL*100)+"%";
   const nx=MS_LIST.find(m=>m>n);
+  // Auf der Startseite bleibt verborgen, was als Nächstes kommt (nur die Vorschau der Verwaltung nennt es)
   if(n===0)$("next").innerHTML="Der erste Termin stellt den <b>Tannenbaum</b> auf.";
   else if(nx){const d=nx-n;$("next").innerHTML=`Noch <b>${d}</b> ${d===1?"Termin":"Termine"} bis: <b>${esc(MILESTONES[nx][1])}</b>`}
   else $("next").innerHTML=realCount>GOAL&&preview===null?`Ziel übertroffen: <b>+${realCount-GOAL}</b> ${realCount-GOAL===1?"Bonus-Geschenk":"Bonus-Geschenke"} auf dem Markt`:"<b>Ziel erreicht: Der Markt ist komplett.</b> Frohe Weihnachten!";
   $("pflag").hidden=preview===null;if(preview!==null)$("pflag").textContent=`Vorschau: ${preview} Termine`;
-  const fb=$("finalBtn");fb.setAttribute("aria-pressed",preview!==null);fb.textContent=preview===null?"Endbild ansehen":"Zurück zum aktuellen Stand";
+  $("finalBtn").hidden=preview===null;
 }
 function renderTeams(){
   const box=$("teams"),c=counts();
@@ -885,9 +886,11 @@ function renderActivity(){
 }
 function renderMilestones(){
   const cur=MS_LIST.find(m=>m>realCount);
-  $("milestones").innerHTML=MS_LIST.map(m=>{const done=m<=realCount,tr=termine[m-1],cls=done?"done":(m===cur?"cur":"todo");
+  // nur erreichte Meilensteine und der nächste; alles Spätere bleibt eine Überraschung
+  $("milestones").innerHTML=MS_LIST.filter(m=>m<=realCount||m===cur).map(m=>{const done=m<=realCount,tr=termine[m-1],cls=done?"done":(m===cur?"cur":"todo");
     const who=done&&tr?`<span class="who">${esc(teamName(tr.team))}</span>`:(m===cur?`<span class="who">noch ${m-realCount}</span>`:"");
-    return `<li class="${cls}"><span class="n">${m}</span><span class="name">${done?"✓ ":""}${esc(MILESTONES[m][1])}</span>${who}</li>`}).join("");
+    const label=(done?"✓ ":"")+esc(MILESTONES[m][1]);
+    return `<li class="${cls}"><span class="n">${m}</span><span class="name">${label}</span>${who}</li>`}).join("");
 }
 let pickedColor=null;
 const ADMIN_HASH="";
@@ -975,7 +978,7 @@ function setPreview(v){preview=v;refreshBaubles();renderHud()}
 $("vorschau").addEventListener("input",e=>{$("vorschauVal").textContent=e.target.value});
 $("previewGo").addEventListener("click",()=>{setPreview(+$("vorschau").value);location.hash="markt"});
 $("previewFinal").addEventListener("click",()=>{setPreview(GOAL);location.hash="markt"});
-$("finalBtn").addEventListener("click",()=>{if(preview!==null){exitPreview();return}setPreview(GOAL)});
+$("finalBtn").addEventListener("click",()=>{if(preview!==null)exitPreview()});
 $("zoomIn").addEventListener("click",()=>S3&&S3.zoom(.82));
 $("zoomOut").addEventListener("click",()=>S3&&S3.zoom(1.22));
 $("homeBtn").addEventListener("click",()=>S3&&S3.resetView());
@@ -991,7 +994,7 @@ window.addEventListener("hashchange",()=>{route();window.scrollTo(0,0)});
 function startLocal(reason){localMode=true;canAdmin=true;setStatus(reason,true);
   teams=[{id:"bsp-a",name:"Beispielteam A",color:COLORS[0][0],order:1,logo:"aarau"},{id:"bsp-b",name:"Beispielteam B",color:COLORS[2][0],order:2,logo:"baer"}];
   route();onTermine([]);
-  window.__wm={add:addTermin,del:delTermin,state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
+  window.__wm={add:addTermin,del:delTermin,preview:v=>{setPreview(v)},state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
 /* ---------- Alles zurücksetzen ---------- */
 // claude.ai: eine Reset-Marke blendet alle älteren Termine sofort bei allen aus; danach werden die alten Einträge aufgeräumt
 function visibleAfterReset(t){return !resetAt||t.epoch===resetAt||(t.epoch==null&&(t.at||0)>resetAt)}
