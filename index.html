@@ -320,7 +320,7 @@ const MILESTONES = {
   132:["giftpile","Geschenkberg unter dem Baum"], 137:["stall","Stall von Bethlehem"], 146:["mary","Maria"], 153:["joseph","Josef"],
   159:["child","Christkind in der Krippe"], 166:["ox","Ochse"], 173:["sheep","Schafe"], 180:["shepherd","Hirte"], 189:["comet","Stern von Bethlehem"],
   199:["king0","Caspar"], 209:["king1","Melchior"], 219:["king2","Balthasar"], 230:["standMarroni","Marronistand"],
-  238:["kids","Schneeballschlacht"], 244:["carousel","Karussell"], 250:["standGritti","Grittibänz & Guetzli"], 259:["choir","Sternsinger"],
+  238:["kids","Spielende Kinder"], 244:["carousel","Karussell"], 250:["standGritti","Grittibänz & Guetzli"], 259:["choir","Sternsinger"],
   270:["church","Die Kirche erstrahlt"], 281:["angel","Engel über dem Stall"], 291:["shooting","Sternschnuppen"],
   300:["finale","Der Markt ist komplett"]
 };
@@ -554,8 +554,28 @@ function stand(st){
   for(let k=0;k<10;k++){const b=bulb(k,.42,k);b.position.set(-half+k*(2*half)/9,h+.02,d/2+.45);g.add(b)}
   const gl=glowSprite(0xffb766,5,.35);gl.position.set(0,1.5,d/2+.5);g.add(gl);
   goods(g,st.goods,d);
+  g.add(vendor(st.goods,d));
   g.position.copy(polar(st.a,14));g.lookAt(0,0,0);return g;
 }
+// Verkäufer/in hinter der Theke, reicht regelmässig Ware über den Tresen
+const VENDORS={gluehwein:["#7a1f24","#f4ecd8","mug"],orange:["#d8732a","#f4ecd8","glass"],magenbrot:["#2f5a40","#f4ecd8","bag"],kerzen:["#3a4f7a","#f4ecd8","candle"],marroni:["#5a3a22","#e9dcc0","cone"],gritti:["#7a2a4a","#f4ecd8","bread"]};
+function vendor(type,d){const [coat,apron,item]=VENDORS[type]||VENDORS.gluehwein;const k=Object.keys(VENDORS).indexOf(type);
+  const p=person({coat,hat:"beanie",hatC:k%2?"#c8323c":"#2f7a55",skin:SKIN[k%SKIN.length],beard:k===4?"#6b5a40":null,s:.82});
+  p.add(box(.34,.5,.04,M(apron),0,.78,.25));                       // Schürze
+  const arm=p.userData.arms[1],hand=new THREE.Group();hand.position.set(0,-.62,.02);hand.scale.setScalar(1.5);arm.add(hand);
+  if(item==="mug"){hand.add(cyl(.07,.07,.14,M(0xc8323c),0,0,0,10))}
+  else if(item==="glass"){hand.add(cyl(.065,.055,.18,E(0xf7a531,.35),0,0,0,10))}
+  else if(item==="bag"){hand.add(cone(.09,.22,M(0xe9dcc0),0,-.02,0,8))}
+  else if(item==="candle"){hand.add(cyl(.04,.04,.18,M(0xd8323c),0,0,0,8));hand.add(cone(.025,.07,E(0xffd86a,1.5),0,.13,0,6))}
+  else if(item==="cone"){const c=cone(.08,.22,M(0xf4ecd8),0,0,0,8);c.rotation.x=Math.PI;hand.add(c);hand.add(sph(.05,M(0x6a3a1c),0,.1,0,6,5))}
+  else {hand.add(sph(.07,M(0xc98a3e),0,.08,0,8,6));hand.add(sph(.09,M(0xc98a3e),0,-.05,0,8,6))}
+  p.position.set(.35,0,.35);p.userData.vendor={arm,hand,ph:k*1.3};
+  anim.push(t=>{if(reduceMotion||!chainVisible(p))return;const c=((t+p.userData.vendor.ph)%5)/5;   // 5-s-Takt
+    let r;if(c<.25)r=c/.25;else if(c<.45)r=1;else if(c<.7)r=1-(c-.45)/.25;else r=0;
+    const e=r*r*(3-2*r);arm.rotation.x=-.45-1.5*e;arm.rotation.z=.32-.3*e;hand.visible=c<.7;
+    p.rotation.y=c>=.7?Math.sin((c-.7)/.3*Math.PI)*-.9:0;               // dreht sich zur Ware und holt Nachschub
+    p.position.z=.35+.15*e});
+  return p}
 function goods(g,type,d){
   const z=d/2+.12,y=1.06;
   g.userData.steam=type==="gluehwein"?[[-1,y+.45,z-.05,"steam"]]:type==="orange"?[[.7,y+.3,z+.05,"steam"]]:type==="marroni"?[[0,y+.25,z,"smoke"]]:[];
@@ -725,23 +745,21 @@ function buildItem(it){
     case "mary":obj=person({coat:"#2f4f8f",robe:true,hat:"veil",hatC:"#3d64ad",trim:"#e9e2cc"});obj.position.set(-.75,0,.55);obj.rotation.y=.6;parent=stallG;anchor=polar(180,12,1.5);break;
     case "joseph":obj=person({coat:"#6b4a2b",robe:true,hat:"headcloth",hatC:"#9a7a4a",beard:"#5a3a22",hold:"stick"});obj.position.set(1.1,0,.4);obj.rotation.y=-.6;parent=stallG;anchor=polar(180,12,1.5);break;
     case "child":{obj=makeChild();obj.position.set(.15,0,.75);parent=stallG;anchor=polar(180,12,1);const gl=obj.userData.glow;anim.push(t=>{gl.material.opacity=.7+(reduceMotion?0:.15*Math.sin(t*2))});break}
-    case "sheep":{obj=new THREE.Group();const heads=[],flock=[];for(const [x,z,r] of [[0,0,.2],[.9,.6,-.4],[-.6,.9,.9]]){const s=sheep();s.position.set(x,0,z);s.rotation.y=r;obj.add(s);heads.push(s.userData.head);flock.push({s,x,z,ph:x*3+z})}
-      anim.push(t=>{if(reduceMotion||!obj.visible)return;flock.forEach(f=>{const a=t*.12+f.ph;const nx=f.x+Math.cos(a)*.45,nz=f.z+Math.sin(a)*.45;f.s.rotation.y=Math.atan2(-Math.cos(a),-Math.sin(a));f.s.position.set(nx,0,nz);f.s.userData.legs.forEach((l,i)=>l.rotation.z=Math.sin(t*3+f.ph+(i%2)*Math.PI)*.25)})});
-      obj.position.copy(polar(203,11));obj.lookAt(stallG.position);anim.push(t=>{if(!reduceMotion)heads.forEach((h,i)=>h.position.y=.62+Math.sin(t*1.6+i*2)*.06)});break}
-    case "shepherd":obj=person({coat:"#7b6a4d",robe:true,hat:"headcloth",hatC:"#c9b48a",beard:"#6b5a40",hold:"crook",skin:"#d6a982"});obj.position.copy(polar(196,10.4));face(obj,stallG.position);break;
+    case "sheep":{obj=new THREE.Group();const heads=[],flock=[];for(const [x,z,r] of [[0,0,.2],[1.15,.45,-.4],[-.55,1.0,.9]]){const s=sheep();s.position.set(x,0,z);s.rotation.y=r;obj.add(s);heads.push(s.userData.head);flock.push({s,x,z,ph:flock.length*.25})}
+      anim.push(t=>{if(reduceMotion||!obj.visible)return;flock.forEach(f=>{const a=t*.12+f.ph;const nx=f.x+Math.cos(a)*.3,nz=f.z+Math.sin(a)*.3;f.s.rotation.y=Math.atan2(-Math.cos(a),-Math.sin(a));f.s.position.set(nx,0,nz);f.s.userData.legs.forEach((l,i)=>l.rotation.z=Math.sin(t*3+f.ph+(i%2)*Math.PI)*.25)})});
+      obj.position.copy(polar(207,11.4));obj.lookAt(stallG.position);anim.push(t=>{if(!reduceMotion)heads.forEach((h,i)=>h.position.y=.62+Math.sin(t*1.6+i*2)*.06)});break}
+    case "shepherd":obj=person({coat:"#7b6a4d",robe:true,hat:"headcloth",hatC:"#c9b48a",beard:"#6b5a40",hold:"crook",skin:"#d6a982"});obj.position.copy(polar(194,10.5));face(obj,polar(207,11.4));break;
     case "comet":{obj=new THREE.Group();const s=new THREE.Sprite(new THREE.SpriteMaterial({map:SPARK,color:0xffe6a0,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));s.scale.set(22,22,1);obj.add(s);
       obj.add(glowSprite(0xffe6a0,40,.6));const tl=new THREE.Sprite(new THREE.SpriteMaterial({map:TAIL,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,rotation:-.35}));tl.scale.set(70,9,1);tl.center.set(1,.5);obj.add(tl);
       obj.position.copy(polar(185,150,75));anim.push(t=>{if(!reduceMotion)s.material.rotation=Math.sin(t*.7)*.15});break}
     case "king0":obj=person({coat:"#5b2a6e",robe:true,trim:"#f2c14e",hat:"crown",hold:"gift",giftC:"#2e8a5a"});obj.position.copy(polar(163,9.6));face(obj,stallG.position);kingWalk(obj,0);break;
     case "king1":obj=person({coat:"#2a5e4a",robe:true,trim:"#f2c14e",hat:"crown",hold:"jar",skin:"#d6a982",beard:"#e8e8e8",beardLong:true});obj.position.copy(polar(156,10.1));face(obj,stallG.position);kingWalk(obj,1);break;
     case "king2":obj=person({coat:"#8a2030",robe:true,trim:"#f2c14e",hat:"crown",hold:"chest",skin:"#7a4b2e"});obj.position.copy(polar(149,9.7));face(obj,stallG.position);kingWalk(obj,2);break;
-    case "kids":{obj=new THREE.Group();const a=person({coat:"#3a6fc4",hat:"beanie",hatC:"#d8323c",scarf:"#f2c14e",hold:"snowball",s:.72}),b=person({coat:"#c8323c",hat:"beanie",hatC:"#2f7a55",scarf:"#f4f4f4",s:.72});
+    case "kids":{obj=new THREE.Group();const a=person({coat:"#3a6fc4",hat:"beanie",hatC:"#d8323c",scarf:"#f2c14e",s:.72}),b=person({coat:"#c8323c",hat:"beanie",hatC:"#2f7a55",scarf:"#f4f4f4",s:.72});
       a.position.set(-1.6,0,0);b.position.set(1.6,0,0);a.rotation.y=Math.PI/2;b.rotation.y=-Math.PI/2;obj.add(a,b);const kidsArr=[a,b];
-      const ball=sph(.12,M("#ffffff",{flatShading:false}),0,1,0,10,8);obj.add(ball);
       obj.position.copy(polar(-40,9.5));obj.rotation.y=-40*DEG+Math.PI/2;
-      anim.push(t=>{if(reduceMotion){ball.visible=false;return}if(!obj.visible)return;const ang=t*.35;
-        kidsArr.forEach((k,i)=>{const a2=ang+i*Math.PI;k.position.set(Math.cos(a2)*1.7,0,Math.sin(a2)*1.7);k.rotation.y=Math.atan2(-Math.sin(a2),Math.cos(a2));walkPose(k,t*6.5+i*Math.PI,1);k.position.y=Math.abs(Math.sin(t*6.5+i*Math.PI))*.05});
-        const per=2.2,p=(t%per)/per,from=kidsArr[Math.floor(t/per)%2].position,to=kidsArr[1-Math.floor(t/per)%2].position;ball.position.set(from.x+(to.x-from.x)*p,1.0+Math.sin(p*Math.PI)*1.3,from.z+(to.z-from.z)*p)});break}
+      anim.push(t=>{if(reduceMotion||!obj.visible)return;const ang=t*.35;
+        kidsArr.forEach((k,i)=>{const a2=ang+i*Math.PI;k.position.set(Math.cos(a2)*1.7,0,Math.sin(a2)*1.7);k.rotation.y=Math.atan2(-Math.sin(a2),Math.cos(a2));walkPose(k,t*6.5+i*Math.PI,1);k.position.y=Math.abs(Math.sin(t*6.5+i*Math.PI))*.05})});break}
     case "carousel":{obj=carousel();obj.position.copy(polar(118,8.5));const {rot,horses}=obj.userData;anim.push((t,dt)=>{if(reduceMotion)return;rot.rotation.y+=dt*.55;horses.forEach((h,i)=>h.position.y=1.2+Math.sin(t*2.4+i*1.05)*.22)});anchor=polar(118,8.5,2);break}
     case "choir":{obj=new THREE.Group();const spins=[];[-1,0,1].forEach((x,i)=>{const p=person({coat:"#f4f1ea",robe:true,hat:"crown",hold:i===0?"starpole":"book",trim:"#d8323c",skin:SKIN[i],s:.82});p.position.set(x,0,0);obj.add(p);if(p.userData.spin)spins.push(p.userData.spin)});
       obj.position.copy(polar(-118,8.5));obj.lookAt(0,0,0);const singers=obj.children.slice();anim.push(t=>{if(reduceMotion||!obj.visible)return;spins.forEach(s=>s.rotation.y=t*1.2);singers.forEach((p,i)=>{p.rotation.z=Math.sin(t*1.6+i*1.3)*.06;p.position.y=Math.abs(Math.sin(t*1.6+i*1.3))*.05})});break}
@@ -848,8 +866,10 @@ function bonusItem(k){if(!bonus[k]){const sp=bonusSpots[k%BONUS_MAX];const o=gif
 function movers(){const out=[];const add2=(name,o,fwdAxis)=>{if(!chainVisible(o))return;const p=new THREE.Vector3();o.getWorldPosition(p);const q=new THREE.Quaternion();o.getWorldQuaternion(q);const f=fwdAxis.clone().applyQuaternion(q);out.push({name,x:p.x,z:p.z,fx:f.x,fz:f.z})};
   for(const e of items){const k=e.it.kind;if(k==="visitor"||k==="samichlaus"||k==="schmutzli"||k.startsWith("king"))add2(k+e.it.i,e.obj,new THREE.Vector3(0,0,1));
     if(k==="donkey")add2("donkey",e.obj,new THREE.Vector3(1,0,0));if(k==="sheep")e.obj.children.forEach((sh,j)=>add2("sheep"+j,sh,new THREE.Vector3(1,0,0)));
+    if(k==="shepherd")add2("shepherd",e.obj,new THREE.Vector3(0,0,1));
     if(k==="kids")e.obj.children.slice(0,2).forEach((kd,j)=>add2("kid"+j,kd,new THREE.Vector3(0,0,1)))}return out}
-const api={schedule,items,controls,zoom,resetView,resize,movers,quality:()=>qLevel,BONUS_MAX,bonusItem,bonus,snowBoost:0,snowOn:true,
+function debugCam(c,tg){if(!controls)return;controls.autoRotate=false;camera.position.set(...c);controls.target.set(...tg)}
+const api={schedule,items,controls,zoom,resetView,resize,movers,debugCam,quality:()=>qLevel,BONUS_MAX,bonusItem,bonus,snowBoost:0,snowOn:true,
   setRotate(v){rotPref=v;if(controls)controls.autoRotate=v&&!reduceMotion},rotPref:()=>rotPref,
   colorBaubles(fn){for(const e of items)if(e.it.kind==="bauble")e.obj.userData.ball.material=baubleMat(fn(e.it.i));bonus.forEach((b,k)=>{if(b)b.obj.userData.body.material=baubleMat(fn(GOAL+k+1))})},
   setVisible,
@@ -1054,7 +1074,7 @@ window.addEventListener("hashchange",()=>{route();window.scrollTo(0,0)});
 function startLocal(reason){localMode=true;canAdmin=true;setStatus(reason,true);
   teams=[{id:"bsp-a",name:"Beispielteam A",color:COLORS[0][0],order:1,logo:"aarau"},{id:"bsp-b",name:"Beispielteam B",color:COLORS[2][0],order:2,logo:"baer"}];
   route();onTermine([]);
-  window.__wm={add:addTermin,del:delTermin,preview:v=>{setPreview(v)},movers:()=>S3?S3.movers():[],state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
+  window.__wm={add:addTermin,del:delTermin,preview:v=>{setPreview(v)},movers:()=>S3?S3.movers():[],cam:(c,t)=>S3&&S3.debugCam(c,t),state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
 /* ---------- Alles zurücksetzen ---------- */
 // claude.ai: eine Reset-Marke blendet alle älteren Termine sofort bei allen aus; danach werden die alten Einträge aufgeräumt
 function visibleAfterReset(t){return !resetAt||t.epoch===resetAt||(t.epoch==null&&(t.at||0)>resetAt)}
