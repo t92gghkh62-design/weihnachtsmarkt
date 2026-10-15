@@ -492,8 +492,9 @@ const SKIN=["#f0c9a3","#d6a982","#a8714a","#f3d4b8","#7a4b2e"];
 function person(o){
   const g=new THREE.Group(),s=o.s||1;
   add(g,mesh(new THREE.CircleGeometry(.42,16),new THREE.MeshBasicMaterial({color:0x4a5878,transparent:true,opacity:.35,depthWrite:false}),0,.015,0),[-Math.PI/2,0,0]);
-  const coat=M(o.coat),skin=M(o.skin||"#f0c9a3",{flatShading:false}),legs=[],arms=[];
-  if(o.robe){g.add(cyl(.2,.4,1.15,coat,0,.575,0));if(o.trim)g.add(cyl(.405,.405,.09,M(o.trim),0,.05,0))}
+  const coat=M(o.coat),skin=M(o.skin||"#f0c9a3",{flatShading:false}),legs=[],arms=[],feet=[];
+  if(o.robe){g.add(cyl(.2,.4,1.15,coat,0,.575,0));if(o.trim)g.add(cyl(.405,.405,.09,M(o.trim),0,.05,0));
+    for(const x of [-.13,.13]){const f=box(.15,.09,.26,M("#1c1c22"),x,.045,.24);g.add(f);feet.push(f)}}
   else{for(const x of [-.1,.1]){const leg=new THREE.Group();leg.position.set(x,.5,0);leg.add(cyl(.08,.08,.5,M(o.legs||"#2b2d3a"),0,-.25,0,8));leg.add(box(.14,.08,.22,M("#1c1c22"),0,-.46,.04));g.add(leg);legs.push(leg)}g.add(cyl(.2,.27,.72,coat,0,.81,0))}
   if(o.scarf){add(g,torus(.19,.055,M(o.scarf),0,1.12,0),[Math.PI/2,0,0]);g.add(box(.09,.32,.05,M(o.scarf),.1,.95,.2))}
   for(const sgn of [-1,1]){const arm=new THREE.Group();arms.push(arm);arm.position.set(sgn*.25,1.08,0);arm.add(cyl(.065,.06,.55,coat,0,-.27,0,8));arm.add(sph(.065,skin,0,-.56,0,8,6));arm.rotation.z=sgn*.32;arm.rotation.x=-.45;g.add(arm)}
@@ -524,10 +525,10 @@ function person(o){
     case "snowball":g.add(sph(.1,M("#ffffff",{flatShading:false}),.38,.71,.22,10,8));break;
   }
   if(o.sack){const sk=sph(.36,M("#8b6b44"),-.12,1.0,-.38,10,8);sk.scale.y=1.2;g.add(sk);g.add(cyl(.08,.12,.12,M("#6b4f30"),-.12,1.46,-.38,8))}
-  g.userData.legs=legs;g.userData.arms=arms;g.userData.cup=o.hold==="cup";
+  g.userData.legs=legs;g.userData.arms=arms;g.userData.feet=feet;g.userData.cup=o.hold==="cup";
   g.scale.setScalar(1.3*s);return g;
 }
-function face(obj,target){obj.lookAt(target.x,obj.position.y,target.z)}
+function face(obj,target){obj.rotation.set(0,Math.atan2(target.x-obj.position.x,target.z-obj.position.z),0)}  // nur um die Hochachse drehen
 const STANDS={
   standGluehwein:{a:50,label:"Glühwein",roof:0x7a1f24,goods:"gluehwein"},
   standOrange:{a:-50,label:"Heisser Orangensaft",roof:0xb25a1a,goods:"orange"},
@@ -612,7 +613,7 @@ function ox(){const g=new THREE.Group(),c=M(0x6b4a32);g.add(box(.7,.75,1.3,c,0,.
   g.add(box(.45,.45,.5,c,0,1.2,.8));g.add(box(.36,.22,.12,M(0xc9a487),0,1.08,1.08));g.add(sph(.03,B(0x111111),-.13,1.3,1.05,6,4));g.add(sph(.03,B(0x111111),.13,1.3,1.05,6,4));
   for(const s of [-1,1])add(g,cone(.05,.3,M(0xefe3c8),s*.3,1.5,.8,6),[0,0,-s*.9]);return g}
 function sheep(){const g=new THREE.Group(),w=M(0xf4f1ea);
-  for(const [x,z] of [[-.2,-.12],[-.2,.12],[.2,-.12],[.2,.12]])g.add(cyl(.04,.04,.35,M(0x2a2a2a),x,.17,z,5));
+  g.userData.legs=[];for(const [x,z] of [[-.2,-.12],[-.2,.12],[.2,-.12],[.2,.12]]){const l=cyl(.04,.04,.35,M(0x2a2a2a),x,.17,z,5);g.add(l);g.userData.legs.push(l)}
   for(const [x,y,z,r] of [[-.15,.5,0,.25],[.12,.52,0,.26],[0,.62,.08,.22],[0,.6,-.1,.22],[-.3,.45,0,.18],[.3,.47,0,.18]])g.add(sph(r,w,x,y,z,8,6));
   g.userData.head=add(g,box(.18,.2,.22,M(0x2a2a2a),.45,.62,0));return g}
 function carousel(){const g=new THREE.Group(),red=M(0xb3262f),gold=M(0xe2b648,{metalness:.6,roughness:.35});
@@ -725,7 +726,7 @@ function buildItem(it){
     case "joseph":obj=person({coat:"#6b4a2b",robe:true,hat:"headcloth",hatC:"#9a7a4a",beard:"#5a3a22",hold:"stick"});obj.position.set(1.1,0,.4);obj.rotation.y=-.6;parent=stallG;anchor=polar(180,12,1.5);break;
     case "child":{obj=makeChild();obj.position.set(.15,0,.75);parent=stallG;anchor=polar(180,12,1);const gl=obj.userData.glow;anim.push(t=>{gl.material.opacity=.7+(reduceMotion?0:.15*Math.sin(t*2))});break}
     case "sheep":{obj=new THREE.Group();const heads=[],flock=[];for(const [x,z,r] of [[0,0,.2],[.9,.6,-.4],[-.6,.9,.9]]){const s=sheep();s.position.set(x,0,z);s.rotation.y=r;obj.add(s);heads.push(s.userData.head);flock.push({s,x,z,ph:x*3+z})}
-      anim.push(t=>{if(reduceMotion||!obj.visible)return;flock.forEach(f=>{const a=t*.12+f.ph;const nx=f.x+Math.cos(a)*.45,nz=f.z+Math.sin(a)*.45;f.s.rotation.y=Math.atan2(-Math.sin(a),Math.cos(a))+Math.PI;f.s.position.set(nx,0,nz)})});
+      anim.push(t=>{if(reduceMotion||!obj.visible)return;flock.forEach(f=>{const a=t*.12+f.ph;const nx=f.x+Math.cos(a)*.45,nz=f.z+Math.sin(a)*.45;f.s.rotation.y=Math.atan2(-Math.cos(a),-Math.sin(a));f.s.position.set(nx,0,nz);f.s.userData.legs.forEach((l,i)=>l.rotation.z=Math.sin(t*3+f.ph+(i%2)*Math.PI)*.25)})});
       obj.position.copy(polar(203,11));obj.lookAt(stallG.position);anim.push(t=>{if(!reduceMotion)heads.forEach((h,i)=>h.position.y=.62+Math.sin(t*1.6+i*2)*.06)});break}
     case "shepherd":obj=person({coat:"#7b6a4d",robe:true,hat:"headcloth",hatC:"#c9b48a",beard:"#6b5a40",hold:"crook",skin:"#d6a982"});obj.position.copy(polar(196,10.4));face(obj,stallG.position);break;
     case "comet":{obj=new THREE.Group();const s=new THREE.Sprite(new THREE.SpriteMaterial({map:SPARK,color:0xffe6a0,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));s.scale.set(22,22,1);obj.add(s);
@@ -739,7 +740,7 @@ function buildItem(it){
       const ball=sph(.12,M("#ffffff",{flatShading:false}),0,1,0,10,8);obj.add(ball);
       obj.position.copy(polar(-40,9.5));obj.rotation.y=-40*DEG+Math.PI/2;
       anim.push(t=>{if(reduceMotion){ball.visible=false;return}if(!obj.visible)return;const ang=t*.35;
-        kidsArr.forEach((k,i)=>{const a2=ang+i*Math.PI;k.position.set(Math.cos(a2)*1.7,0,Math.sin(a2)*1.7);const o2=kidsArr[1-i].position;k.rotation.y=Math.atan2(o2.x-k.position.x,o2.z-k.position.z);walkPose(k,t*7+i,1);k.position.y=Math.abs(Math.sin(t*7+i))*.05});
+        kidsArr.forEach((k,i)=>{const a2=ang+i*Math.PI;k.position.set(Math.cos(a2)*1.7,0,Math.sin(a2)*1.7);k.rotation.y=Math.atan2(-Math.sin(a2),Math.cos(a2));walkPose(k,t*6.5+i*Math.PI,1);k.position.y=Math.abs(Math.sin(t*6.5+i*Math.PI))*.05});
         const per=2.2,p=(t%per)/per,from=kidsArr[Math.floor(t/per)%2].position,to=kidsArr[1-Math.floor(t/per)%2].position;ball.position.set(from.x+(to.x-from.x)*p,1.0+Math.sin(p*Math.PI)*1.3,from.z+(to.z-from.z)*p)});break}
     case "carousel":{obj=carousel();obj.position.copy(polar(118,8.5));const {rot,horses}=obj.userData;anim.push((t,dt)=>{if(reduceMotion)return;rot.rotation.y+=dt*.55;horses.forEach((h,i)=>h.position.y=1.2+Math.sin(t*2.4+i*1.05)*.22)});anchor=polar(118,8.5,2);break}
     case "choir":{obj=new THREE.Group();const spins=[];[-1,0,1].forEach((x,i)=>{const p=person({coat:"#f4f1ea",robe:true,hat:"crown",hold:i===0?"starpole":"book",trim:"#d8323c",skin:SKIN[i],s:.82});p.position.set(x,0,0);obj.add(p);if(p.userData.spin)spins.push(p.userData.spin)});
@@ -775,7 +776,11 @@ const WALK_BLOCK=FEATURES.concat([FP(28,8.75,1.1),FP(37,8.75,1.1),FP(46,8.75,1.1
 const walkFree=(p,pad)=>WALK_BLOCK.every(([fx,fz,fr])=>Math.hypot(p.x-fx,p.z-fz)>fr+pad);
 const waypoints=visitorSpots.filter(p=>walkFree(p,.3)).map(p=>p.clone());{let t=0;while(waypoints.length<90&&t<8000){t++;const p=polar(RW()*360,4.8+RW()*12);if(walkFree(p,.6))waypoints.push(p)}}
 function segClear(a,b){for(const [fx,fz,fr] of WALK_BLOCK){const dx=b.x-a.x,dz=b.z-a.z,l2=dx*dx+dz*dz||1;let u=((fx-a.x)*dx+(fz-a.z)*dz)/l2;u=Math.max(0,Math.min(1,u));const px=a.x+dx*u-fx,pz=a.z+dz*u-fz;if(px*px+pz*pz<(fr+.35)*(fr+.35))return false}return true}
-function walkPose(p,ph,amt){const l=p.userData.legs||[],a=p.userData.arms||[];if(l[0]){l[0].rotation.x=Math.sin(ph)*.6*amt;l[1].rotation.x=-Math.sin(ph)*.6*amt}if(a[0]){a[0].rotation.x=-.45-Math.sin(ph)*.35*amt;a[1].rotation.x=-.45+Math.sin(ph)*.35*amt}}
+function walkPose(p,ph,amt){const l=p.userData.legs||[],a=p.userData.arms||[],f=p.userData.feet||[],sn=Math.sin(ph);
+  if(l[0]){l[0].rotation.x=sn*.6*amt;l[1].rotation.x=-sn*.6*amt}
+  if(f[0]){f[0].position.z=.24+sn*.13*amt;f[1].position.z=.24-sn*.13*amt;f[0].position.y=.045+Math.max(0,Math.cos(ph))*.05*amt;f[1].position.y=.045+Math.max(0,-Math.cos(ph))*.05*amt}
+  if(a[0]){a[0].rotation.x=-.45-sn*.35*amt;a[1].rotation.x=-.45+sn*.35*amt}}
+const angDiff=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
 function turnTo(o,yaw,dt){let d=yaw-o.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));o.rotation.y+=d*Math.min(1,dt*4)}
 function walker(o,start,speed){const st={pos:start.clone(),target:null,wait:Math.random()*6,ph:Math.random()*6,speed};
   anim.push((t,dt)=>{if(reduceMotion||!o.visible)return;
@@ -783,12 +788,23 @@ function walker(o,start,speed){const st={pos:start.clone(),target:null,wait:Math
       const opts=waypoints.filter(w=>{const d=w.distanceTo(st.pos);return d>1.5&&d<7&&segClear(st.pos,w)});if(!opts.length){st.wait=3;return}st.target=opts[Math.floor(Math.random()*opts.length)]}
     const d=st.target.clone().sub(st.pos);d.y=0;const L=d.length();
     if(L<.08){st.pos.copy(st.target);st.target=null;st.wait=2+Math.random()*7;return}
-    const step=Math.min(L,st.speed*dt);st.pos.addScaledVector(d.normalize(),step);st.ph+=dt*st.speed*8;
-    o.position.set(st.pos.x,Math.abs(Math.sin(st.ph))*.05,st.pos.z);turnTo(o,Math.atan2(d.x,d.z),dt);walkPose(o,st.ph,1)})}
+    const yaw=Math.atan2(d.x,d.z);turnTo(o,yaw,dt);
+    if(Math.abs(angDiff(yaw,o.rotation.y))>.12){walkPose(o,st.ph,.3);st.ph+=dt*4;return}   // erst in Laufrichtung drehen
+    o.rotation.y=yaw;
+    const step=Math.min(L,st.speed*dt);st.pos.addScaledVector(d.normalize(),step);st.ph+=dt*st.speed*9;
+    o.position.set(st.pos.x,Math.abs(Math.sin(st.ph))*.05,st.pos.z);walkPose(o,st.ph,1)})}
 function arcWalker(o,mid,amp,r,lag){anim.push((t,dt)=>{if(reduceMotion||!o.visible)return;const w=.045,tt=t+lag/(amp*w),a=mid+amp*Math.sin(tt*w),dir=Math.sign(Math.cos(tt*w))||1,sp=Math.abs(Math.cos(tt*w));
-  o.position.copy(polar(a,r));o.position.y=Math.abs(Math.sin(t*4))*.05*sp;const h=new THREE.Vector3(Math.cos(a*DEG),0,-Math.sin(a*DEG)).multiplyScalar(dir);turnTo(o,Math.atan2(h.x,h.z),dt);o.rotation.z=Math.sin(t*4)*.03*sp})}
+  const yaw=Math.atan2(Math.cos(a*DEG)*dir,-Math.sin(a*DEG)*dir);o.rotation.y=yaw;  // Blick immer in Laufrichtung
+  o.position.copy(polar(a,r));const ph=t*4.2;o.position.y=Math.abs(Math.sin(ph))*.04*sp;walkPose(o,ph,Math.min(1,sp*1.6))})}
 function kingWalk(o,k){const base=o.position.clone(),dir=stallG.position.clone().sub(base).setY(0).normalize();
-  anim.push(t=>{if(reduceMotion||!o.visible)return;const q=Math.sin(t*.14+k*1.7);o.position.copy(base).addScaledVector(dir,q*.7);o.position.y=Math.abs(Math.sin(t*3.2+k))*.04*Math.abs(Math.cos(t*.14+k*1.7));o.rotation.z=Math.sin(t*3.2+k)*.025})}
+  // Ablauf (32 s): 10 s zum Stall schreiten, 6 s stehen und umdrehen, 10 s zurück, 6 s stehen und umdrehen
+  const fwd=Math.atan2(dir.x,dir.z),D=1.6,T=32,off=k*7;
+  anim.push((t,dt)=>{if(reduceMotion||!o.visible)return;const u=((t+off)%T+T)%T;let x,yaw,moving=false;
+    if(u<10){x=D*u/10;yaw=fwd;moving=true}
+    else if(u<16){x=D;yaw=fwd+Math.PI*Math.min(1,Math.max(0,(u-12)/2))}
+    else if(u<26){x=D*(1-(u-16)/10);yaw=fwd+Math.PI;moving=true}
+    else{x=0;yaw=fwd+Math.PI+Math.PI*Math.min(1,Math.max(0,(u-28)/2))}
+    o.position.copy(base).addScaledVector(dir,x-D/2);const ph=t*3.4+k;o.position.y=moving?Math.abs(Math.sin(ph))*.035:0;o.rotation.y=yaw;walkPose(o,ph,moving?1:0)})}
 // Dampf und Rauch
 const puffs=[];for(let k=0;k<260;k++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:SNOWT,transparent:true,depthWrite:false,opacity:0}));sp.visible=false;scene.add(sp);puffs.push({s:sp,v:new THREE.Vector3(),age:0,max:1,size:1,op:.4})}
 let puffIdx=0;const emitters=[];
@@ -829,7 +845,11 @@ if(document.fonts)Promise.race([document.fonts.load('700 60px "Grenze Gotisch"')
 const bonus=[];
 function bonusItem(k){if(!bonus[k]){const sp=bonusSpots[k%BONUS_MAX];const o=gift({p:sp.p,s:sp.s,rot:sp.rot,tall:sp.tall,col:"#c9d3de"});o.visible=false;root.add(o);
   bonus[k]={obj:o,base:o.scale.clone(),anchor:sp.p.clone().setY(.6),shownAt:-99,it:{big:false,kind:"bonus"}}}return bonus[k]}
-const api={schedule,items,controls,zoom,resetView,resize,quality:()=>qLevel,BONUS_MAX,bonusItem,bonus,snowBoost:0,snowOn:true,
+function movers(){const out=[];const add2=(name,o,fwdAxis)=>{if(!chainVisible(o))return;const p=new THREE.Vector3();o.getWorldPosition(p);const q=new THREE.Quaternion();o.getWorldQuaternion(q);const f=fwdAxis.clone().applyQuaternion(q);out.push({name,x:p.x,z:p.z,fx:f.x,fz:f.z})};
+  for(const e of items){const k=e.it.kind;if(k==="visitor"||k==="samichlaus"||k==="schmutzli"||k.startsWith("king"))add2(k+e.it.i,e.obj,new THREE.Vector3(0,0,1));
+    if(k==="donkey")add2("donkey",e.obj,new THREE.Vector3(1,0,0));if(k==="sheep")e.obj.children.forEach((sh,j)=>add2("sheep"+j,sh,new THREE.Vector3(1,0,0)));
+    if(k==="kids")e.obj.children.slice(0,2).forEach((kd,j)=>add2("kid"+j,kd,new THREE.Vector3(0,0,1)))}return out}
+const api={schedule,items,controls,zoom,resetView,resize,movers,quality:()=>qLevel,BONUS_MAX,bonusItem,bonus,snowBoost:0,snowOn:true,
   setRotate(v){rotPref=v;if(controls)controls.autoRotate=v&&!reduceMotion},rotPref:()=>rotPref,
   colorBaubles(fn){for(const e of items)if(e.it.kind==="bauble")e.obj.userData.ball.material=baubleMat(fn(e.it.i));bonus.forEach((b,k)=>{if(b)b.obj.userData.body.material=baubleMat(fn(GOAL+k+1))})},
   setVisible,
@@ -1034,7 +1054,7 @@ window.addEventListener("hashchange",()=>{route();window.scrollTo(0,0)});
 function startLocal(reason){localMode=true;canAdmin=true;setStatus(reason,true);
   teams=[{id:"bsp-a",name:"Beispielteam A",color:COLORS[0][0],order:1,logo:"aarau"},{id:"bsp-b",name:"Beispielteam B",color:COLORS[2][0],order:2,logo:"baer"}];
   route();onTermine([]);
-  window.__wm={add:addTermin,del:delTermin,preview:v=>{setPreview(v)},state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
+  window.__wm={add:addTermin,del:delTermin,preview:v=>{setPreview(v)},movers:()=>S3?S3.movers():[],state:()=>({realCount,shown,bshown,cam:S3&&S3.controls?S3.controls.target.toArray().map(v=>+v.toFixed(2)):null,preview,teams:teams.length,quality:S3?S3.quality():-1})}}
 /* ---------- Alles zurücksetzen ---------- */
 // claude.ai: eine Reset-Marke blendet alle älteren Termine sofort bei allen aus; danach werden die alten Einträge aufgeräumt
 function visibleAfterReset(t){return !resetAt||t.epoch===resetAt||(t.epoch==null&&(t.at||0)>resetAt)}
