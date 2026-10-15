@@ -17,6 +17,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const PUBLIC = fs.existsSync(path.join(__dirname, "public", "index.html")) ? path.join(__dirname, "public") : __dirname;
 const SERVE_STATIC = PUBLIC !== __dirname;
 const MAX_TERMINE = 5000;
+const PAUSED = /^(1|true|ja|yes)$/i.test(process.env.PAUSED || "");
 
 const SEED_TEAMS = [
   { id: "aarau", name: "Aarau", color: "#d64545", order: 1, logo: "aarau" },
@@ -128,7 +129,16 @@ async function handle(req, res) {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
 
-  if (p === "/health") return send(res, 200, { ok: true, termine: state.termine.size, teams: state.teams.size, live: clients.size, store: store.kind });
+  if (p === "/health") return send(res, 200, { ok: true, paused: PAUSED, termine: state.termine.size, teams: state.teams.size, live: clients.size, store: store.kind });
+
+  // Pausenschalter: Umgebungsvariable PAUSED=1 → nur ein Hinweis, keine Daten, keine Klicks
+  if (PAUSED) {
+    if (p.startsWith("/api/")) return send(res, 503, { error: "Der Weihnachtsmarkt ist zurzeit pausiert." });
+    res.writeHead(503, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "86400" });
+    return res.end(`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altstadt-Weihnachtsmarkt</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0c1529;color:#eef3fa;font:17px/1.5 system-ui,sans-serif;padding:24px;text-align:center}h1{color:#f2b544;font:700 34px Georgia,serif;margin:0 0 8px}p{color:#9fb0cf;margin:0}</style></head>
+<body><div><h1>Altstadt-Weihnachtsmarkt</h1><p>Der Markt ist zurzeit pausiert und öffnet bald wieder.</p></div></body></html>`);
+  }
 
   if (p === "/api/state" && req.method === "GET") return send(res, 200, snapshot());
 
